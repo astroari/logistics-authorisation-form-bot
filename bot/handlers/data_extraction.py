@@ -32,15 +32,22 @@ def extract_text_from_openai_api(images):
     content_list = []
     content_list.append({
         "type": "text",
-        "text": """Extract the document information into a Python dictionary format with these exact keys:
+        "text": """Extract the document information into a Python dictionary format. Based on the document type, extract only the relevant fields:
+
+        For passport documents, extract these fields:
         {
             'driver_name': 'full name from passport including surname, name and patronymic',
             'passport_series': 'passport series number',
             'passport_number': 'passport number',
             'passport_authority': 'from authority field from passport',
-            'passport_date_issued': 'date of issue in DD/MM/YYYY format',
-            'number_plates': 'vehicle license plate number from vehicle license separated by a /'
+            'passport_date_issued': 'date of issue in DD/MM/YYYY format'
         }
+
+        For vehicle license documents, extract only:
+        {
+            'number_plates': 'vehicle license plate number from vehicle license (format: "DAVLAT RAQAM BELGISI 1. <plate number>")'
+        }
+
         Only extract information that is clearly visible and readable. Return ONLY the dictionary, no additional text."""
     })
     
