@@ -11,6 +11,8 @@ import base64
 import openai
 import tempfile
 import pymupdf
+import shutil
+from contextlib import contextmanager
 
 def encode_image(image_path):
     """
@@ -73,23 +75,50 @@ def extract_text_from_openai_api(images):
         print(f"\nError extracting text from image {images}: {e}")
         return {"error": str(e)}
 
+@contextmanager
+def temporary_directory():
+    """Context manager for creating and cleaning up a temporary directory"""
+    temp_dir = tempfile.mkdtemp()
+    try:
+        yield temp_dir
+    finally:
+        shutil.rmtree(temp_dir)
+
 def convert_pdf_to_images(pdf_path, dpi=300):
-    """Convert each page of a PDF to an image"""
-    images = []
-    pdf_document = pymupdf.open(pdf_path)
+    """
+    Convert each page of a PDF to an image and process it through the OpenAI API.
     
-    for page_num in range(len(pdf_document)):
-        page = pdf_document.load_page(page_num)
-        
-        pix = page.get_pixmap(matrix=pymupdf.Matrix(dpi/72, dpi/72))
-        
-        # Create a unique filename for each page
-        image_path = f"/content/temp_{pdf_path.split('/')[-1]}_{page_num}.png"
-        pix.save(image_path)
-        images.append(image_path)
+    Args:
+        pdf_path (str): Path to the PDF file
+        dpi (int): Resolution for the output images (default: 300)
     
-    pdf_document.close()
-    return images
+    Returns:
+        dict: Dictionary containing extracted information or error message
+    """
+    try:
+        pdf_document = pymupdf.open(pdf_path)
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            images = []
+            for page_num in range(len(pdf_document)):
+                page = pdf_document.load_page(page_num)
+        
+                pix = page.get_pixmap(matrix=pymupdf.Matrix(dpi/72, dpi/72))
+                
+                # Create a unique filename for each page in the temporary directory
+                image_path = os.path.join(temp_dir, f"page_{page_num}.png")
+                pix.save(image_path)
+                images.append(image_path)
+            
+            # Process all images through the OpenAI API
+            return extract_text_from_openai_api(images)
+            
+    except Exception as e:
+        print(f"Error processing PDF: {e}")
+        return {"error": str(e)}
+    finally:
+        if 'pdf_document' in locals():
+            pdf_document.close()
 
 def get_file_type(file_path):
     """Determine if file is PDF or image based on extension"""
@@ -106,8 +135,7 @@ def process_file(file_path):
     file_type = get_file_type(file_path)
     
     if file_type == 'pdf':
-        images = convert_pdf_to_images(file_path)
-        return extract_text_from_openai_api(images)
+        return convert_pdf_to_images(file_path)
     elif file_type == 'image':
         return extract_text_from_openai_api([file_path])
     else:
