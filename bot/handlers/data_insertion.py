@@ -1,4 +1,5 @@
 from openpyxl import load_workbook
+from openpyxl.drawing.image import Image
 from datetime import date, timedelta
 import os
 
@@ -41,6 +42,13 @@ def insert_data(organisation_name, extracted_data, temp_dir):
             'E25': 'number_plates',
             'E28': 'vendor_name'  # TODO: make an if clause for palisandr bc it's E27 or fix the template
         }
+
+        # Add logo to the template
+        logo_path = f'forms/{organisation_name}_logo.png'
+        logo = Image(logo_path)
+        logo.width = 100
+        logo.height = 100
+        template_ws.add_image(logo, 'C44')
 
         # Fill in each cell with corresponding data
         for cell, key in cell_mapping.items():
