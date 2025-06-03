@@ -44,11 +44,11 @@ def insert_data(organisation_name, extracted_data, temp_dir):
         }
 
         # Add logo to the template
-        logo_path = f'forms/{organisation_name}_logo.png'
-        logo = Image(logo_path)
-        logo.width = 100
-        logo.height = 100
-        template_ws.add_image(logo, 'C44')
+        # logo_path = f'forms/{organisation_name}_logo.png'
+        # logo = Image(logo_path)
+        # logo.width = 100
+        # logo.height = 100
+        # template_ws.add_image(logo, 'C44')
 
         # Fill in each cell with corresponding data
         for cell, key in cell_mapping.items():
