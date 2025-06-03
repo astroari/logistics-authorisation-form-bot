@@ -43,12 +43,13 @@ def insert_data(organisation_name, extracted_data, temp_dir):
             'E28': 'vendor_name'  # TODO: make an if clause for palisandr bc it's E27 or fix the template
         }
 
-        # Add logo to the template
-        # logo_path = f'forms/{organisation_name}_logo.png'
-        # logo = Image(logo_path)
-        # logo.width = 100
-        # logo.height = 100
-        # template_ws.add_image(logo, 'C44')
+        # Add logo to the template - TODO: figure out why this only happens for kedr
+        if organisation_name == 'kedr':
+            logo_path = f'forms/{organisation_name}_logo.png'
+            logo = Image(logo_path)
+            logo.width = 100
+            logo.height = 100
+            template_ws.add_image(logo, 'C44')
 
         # Fill in each cell with corresponding data
         for cell, key in cell_mapping.items():
