@@ -179,13 +179,13 @@ def extract_text_from_openai_api(images):
             'driver_name': 'full name from passport including surname, name and patronymic',
             'passport_series': 'passport series number',
             'passport_number': 'passport number',
-            'passport_authority': 'from authority field from passport',
+            'passport_authority': 'from authority field from passport, usually starts with MIA',
             'passport_date_issued': 'date of issue in DD/MM/YYYY format'
         }
 
-        For vehicle license documents, extract only:
+        For vehicle license documents, extract only the vehicle licence plate / DAVLAT RAQAM BELGISI, found at line 1.:
         {
-            'number_plates': 'vehicle license plate number from vehicle license (format: "DAVLAT RAQAM BELGISI 1. <plate number>")'
+            'number_plates': 'vehicle license plate'
         }
 
         Only extract information that is clearly visible and readable. Return ONLY the dictionary, no additional text."""
