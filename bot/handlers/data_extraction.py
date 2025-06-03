@@ -10,6 +10,10 @@ import exifread
 import pytesseract
 from typing import Tuple, Optional
 from dotenv import load_dotenv
+from bot.logger import setup_logger
+
+# Set up logger
+logger = setup_logger(__name__)
 
 load_dotenv()
 OPENAI_API = os.getenv('OPENAI_API')
@@ -17,12 +21,6 @@ OPENAI_API = os.getenv('OPENAI_API')
 client = OpenAI(
   api_key=OPENAI_API
 )
-
-import base64
-import tempfile
-import pymupdf
-import shutil
-from contextlib import contextmanager
 
 def encode_image(image_path):
     """
@@ -51,7 +49,7 @@ def get_exif_orientation(image_path: str) -> Optional[int]:
             }
             return orientation_map.get(orientation, 0)
     except Exception as e:
-        print(f"[DEBUG] EXIF read error: {e}")
+        logger.warning(f"EXIF read error: {e}")
     return None
 
 def detect_text_orientation(image_path: str) -> Tuple[int, float]:
@@ -95,11 +93,11 @@ def detect_text_orientation(image_path: str) -> Tuple[int, float]:
         
         # Get the best orientation
         best_angle = max(orientations.items(), key=lambda x: x[1])
-        print(f"[DEBUG] OCR orientation scores: {orientations}")
+        logger.debug(f"OCR orientation scores: {orientations}")
         return best_angle
         
     except Exception as e:
-        print(f"[DEBUG] OCR error: {e}")
+        logger.error(f"OCR error: {e}", exc_info=True)
         return 0, 0.0
 
 def detect_document_orientation(image_path: str) -> Tuple[int, float]:
@@ -107,23 +105,23 @@ def detect_document_orientation(image_path: str) -> Tuple[int, float]:
     Detect document orientation using EXIF data and OCR.
     Returns (rotation_angle, confidence_score)
     """
-    print(f"\n[DEBUG] Starting orientation detection for: {image_path}")
+    logger.info(f"Starting orientation detection for: {image_path}")
     
     # First try EXIF data
     exif_angle = get_exif_orientation(image_path)
     if exif_angle is not None:
-        print(f"[DEBUG] Found EXIF orientation: {exif_angle}°")
+        logger.info(f"Found EXIF orientation: {exif_angle}°")
         return exif_angle, 1.0
     
     # If no EXIF data, try OCR
-    print("[DEBUG] No EXIF data, trying OCR detection...")
+    logger.info("No EXIF data, trying OCR detection...")
     return detect_text_orientation(image_path)
 
 def rotate_image(image_path: str, angle: int) -> str:
     """
     Rotates an image by the specified angle and returns the path to the rotated image.
     """
-    print(f"[DEBUG] Rotating image {image_path} by {angle}°")
+    logger.info(f"Rotating image {image_path} by {angle}°")
     
     try:
         img = Image.open(image_path)
@@ -133,94 +131,90 @@ def rotate_image(image_path: str, angle: int) -> str:
         # Save the rotated image
         rotated_path = image_path.replace('.', '_rotated.')
         img.save(rotated_path)
-        print(f"[DEBUG] Saved rotated image to: {rotated_path}")
+        logger.info(f"Saved rotated image to: {rotated_path}")
         
         return rotated_path
     except Exception as e:
-        print(f"[DEBUG] Rotation error: {e}")
+        logger.error(f"Rotation error: {e}", exc_info=True)
         return image_path
 
 def extract_text_from_openai_api(images):
     """
     Sends the base64-encoded image to the OpenAI API and retrieves the extracted text.
     """
-    print("\n[DEBUG] Starting image processing for OpenAI API")
+    logger.info("Starting image processing for OpenAI API")
     
     # Process each image for correct orientation
     processed_images = []
     for i, image_path in enumerate(images):
-        print(f"\n[DEBUG] Processing image {i+1}/{len(images)}: {image_path}")
+        logger.info(f"Processing image {i+1}/{len(images)}: {image_path}")
         
         # Detect orientation
         rotation_angle, confidence = detect_document_orientation(image_path)
-        print(f"[DEBUG] Detected orientation - Angle: {rotation_angle}°, Confidence: {confidence:.2f}")
+        logger.info(f"Detected orientation - Angle: {rotation_angle}°, Confidence: {confidence:.2f}")
         
         # If we're confident about the orientation and it's not 0 degrees
         if confidence > 0.5 and rotation_angle != 0:
             # Rotate the image
             rotated_path = rotate_image(image_path, rotation_angle)
             processed_images.append(rotated_path)
-            print(f"[DEBUG] Using rotated image: {rotated_path}")
+            logger.info(f"Using rotated image: {rotated_path}")
         else:
             processed_images.append(image_path)
-            print(f"[DEBUG] Using original image (no rotation needed)")
+            logger.info("Using original image (no rotation needed)")
     
     # encode every image
-    print("\n[DEBUG] Encoding images for API")
+    logger.info("Encoding images for API")
     base64_images = [encode_image(image_path) for image_path in processed_images]
 
     # dictionary with all the content
     content_list = []
-    content_list.append({
-        "type": "text",
-        "text": """Extract the document information into a Python dictionary format. Based on the document type, extract only the relevant fields:
-
-        For passport documents, extract these fields:
-        {
-            'driver_name': 'full name from passport including surname, name and patronymic',
-            'passport_series': 'passport series number',
-            'passport_number': 'passport number',
-            'passport_authority': 'from authority field from passport, usually starts with MIA',
-            'passport_date_issued': 'date of issue in DD/MM/YYYY format'
-        }
-
-        For vehicle license documents, extract only the vehicle licence plate / DAVLAT RAQAM BELGISI, found at line 1.:
-        {
-            'number_plates': 'vehicle license plate'
-        }
-
-        Only extract information that is clearly visible and readable. Return ONLY the dictionary, no additional text."""
-    })
-    
-    for i in range(len(base64_images)):
+    for base64_image in base64_images:
         content_list.append({
             "type": "image_url",
             "image_url": {
-                "url": f"data:image/jpeg;base64,{base64_images[i]}"
+                "url": f"data:image/jpeg;base64,{base64_image}"
             }
         })
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4-vision-preview",
             messages=[
                 {
                     "role": "user",
-                    "content": content_list
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": """Extract the following information from the document:
+1. Full name (ФИО)
+2. Passport series and number (Серия и номер паспорта)
+3. Passport issuing authority (Кем выдан)
+4. Passport issue date (Дата выдачи)
+5. Vehicle registration number (Номерные знаки)
+
+Format the response as a JSON object with the following keys:
+- driver_name
+- passport_series
+- passport_number
+- passport_authority
+- passport_date_issued
+- number_plates
+
+If any field is not found, leave it as an empty string."""
+                        },
+                        *content_list
+                    ]
                 }
-            ]
+            ],
+            max_tokens=500
         )
-        # Clean the response and convert to dictionary
-        try:
-            response_text = response.choices[0].message.content
-            # Remove markdown code block formatting if present
-            response_text = response_text.replace("```python", "").replace("```", "").strip()
-            return eval(response_text)
-        except Exception as e:
-            print(f"Error parsing dictionary response: {response.choices[0].message.content}")
-            return {"error": "Failed to parse response as dictionary"}
+        
+        logger.info("Successfully received response from OpenAI API")
+        return response.choices[0].message.content
+        
     except Exception as e:
-        print(f"\nError extracting text from image {images}: {e}")
+        logger.error(f"Error calling OpenAI API: {e}", exc_info=True)
         return {"error": str(e)}
 
 @contextmanager
@@ -232,41 +226,45 @@ def temporary_directory():
     finally:
         shutil.rmtree(temp_dir)
 
-def convert_pdf_to_images(pdf_path, dpi=300):
+def process_file(file_path: str) -> dict:
     """
-    Convert each page of a PDF to an image and process it through the OpenAI API.
-    
-    Args:
-        pdf_path (str): Path to the PDF file
-        dpi (int): Resolution for the output images (default: 300)
-    
-    Returns:
-        dict: Dictionary containing extracted information or error message
+    Process a file (PDF or image) and extract text using OCR.
+    Returns a dictionary with extracted data.
     """
+    logger.info(f"Processing file: {file_path}")
+    
     try:
-        pdf_document = pymupdf.open(pdf_path)
+        file_type = get_file_type(file_path)
+        logger.info(f"Detected file type: {file_type}")
         
-        with tempfile.TemporaryDirectory() as temp_dir:
+        if file_type == 'pdf':
+            # Convert PDF to images
+            doc = pymupdf.open(file_path)
             images = []
-            for page_num in range(len(pdf_document)):
-                page = pdf_document.load_page(page_num)
-        
-                pix = page.get_pixmap(matrix=pymupdf.Matrix(dpi/72, dpi/72))
+            
+            for page in doc:
+                pix = page.get_pixmap()
+                img_path = f"{file_path}_page_{page.number}.png"
+                pix.save(img_path)
+                images.append(img_path)
                 
-                # Create a unique filename for each page in the temporary directory
-                image_path = os.path.join(temp_dir, f"page_{page_num}.png")
-                pix.save(image_path)
-                images.append(image_path)
+            logger.info(f"Converted PDF to {len(images)} images")
             
-            # Process all images through the OpenAI API
-            return extract_text_from_openai_api(images)
-            
+        elif file_type == 'image':
+            images = [file_path]
+        else:
+            logger.error(f"Unsupported file type: {file_type}")
+            return {"error": f"Unsupported file type: {file_type}"}
+        
+        # Extract text from images
+        extracted_text = extract_text_from_openai_api(images)
+        logger.info("Successfully extracted text from images")
+        
+        return extracted_text
+        
     except Exception as e:
-        print(f"Error processing PDF: {e}")
+        logger.error(f"Error processing file: {e}", exc_info=True)
         return {"error": str(e)}
-    finally:
-        if 'pdf_document' in locals():
-            pdf_document.close()
 
 def get_file_type(file_path):
     """Determine if file is PDF or image based on extension"""
@@ -278,14 +276,3 @@ def get_file_type(file_path):
         return 'image'
     else:
         return 'unknown'
-
-def process_file(file_path):
-    file_type = get_file_type(file_path)
-    
-    if file_type == 'pdf':
-        return convert_pdf_to_images(file_path)
-    elif file_type == 'image':
-        return extract_text_from_openai_api([file_path])
-    else:
-        print(f"Unsupported file type: {file_path}")
-        return {"error": "Unsupported file type"}

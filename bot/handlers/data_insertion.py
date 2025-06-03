@@ -2,23 +2,30 @@ from openpyxl import load_workbook
 from openpyxl.drawing.image import Image
 from datetime import date, timedelta
 import os
+from bot.logger import setup_logger
 
+# Set up logger
+logger = setup_logger(__name__)
 
 def insert_data(organisation_name, extracted_data, temp_dir):
     # Validate input data
     if not isinstance(extracted_data, dict):
+        logger.error(f"Invalid extracted_data type: {type(extracted_data)}")
         raise ValueError(f"Expected dictionary for extracted_data, got {type(extracted_data)}")
     
     if 'error' in extracted_data:
+        logger.error(f"Error in extracted data: {extracted_data['error']}")
         raise ValueError(f"Error in extracted data: {extracted_data['error']}")
     
     # Use the permanent forms directory for the template
     template_path = f'forms/{organisation_name}_form.xlsx'
     if not os.path.exists(template_path):
+        logger.error(f"Template file not found: {template_path}")
         raise FileNotFoundError(f"Template file not found: {template_path}")
     
     # Use the temporary directory for the output file
     output_path = os.path.join(temp_dir, f'{organisation_name}_form_filled.xlsx')
+    logger.info(f"Will save filled form to: {output_path}")
     
     try:
         template = load_workbook(template_path)
@@ -27,6 +34,7 @@ def insert_data(organisation_name, extracted_data, temp_dir):
         # Get current date and next month's date
         today = date.today()
         next_month = today + timedelta(days=30)  # TODO: change to next month
+        logger.info(f"Setting dates - today: {today}, next month: {next_month}")
 
         # Fill in the template with extracted data
         template_ws['F10'] = today.strftime('%d/%m/%Y')
@@ -46,6 +54,7 @@ def insert_data(organisation_name, extracted_data, temp_dir):
         # Add logo to the template - TODO: figure out why this only happens for kedr
         if organisation_name == 'kedr':
             logo_path = f'forms/{organisation_name}_logo.png'
+            logger.info(f"Adding logo from: {logo_path}")
             logo = Image(logo_path)
             logo.width = 100
             logo.height = 100
@@ -55,14 +64,16 @@ def insert_data(organisation_name, extracted_data, temp_dir):
         for cell, key in cell_mapping.items():
             value = extracted_data.get(key)
             if value is None:
-                print(f"Warning: Missing data for key '{key}'")
+                logger.warning(f"Missing data for key '{key}'")
             template_ws[cell] = value
+            logger.debug(f"Filled cell {cell} with value: {value}")
 
         template.save(output_path)
+        logger.info(f"Successfully saved filled form to: {output_path}")
         return output_path
         
     except Exception as e:
-        print(f"Error in insert_data: {str(e)}")
+        logger.error(f"Error in insert_data: {str(e)}", exc_info=True)
         raise
 
 
