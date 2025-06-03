@@ -1,9 +1,6 @@
 from openai import OpenAI
-import json
 import os
-import sys
 import base64
-import openai
 import tempfile
 import pymupdf
 import shutil
@@ -12,9 +9,13 @@ from PIL import Image
 import exifread
 import pytesseract
 from typing import Tuple, Optional
+from dotenv import load_dotenv
+
+load_dotenv()
+OPENAI_API = os.getenv('OPENAI_API')
 
 client = OpenAI(
-  api_key=""
+  api_key=OPENAI_API
 )
 
 import base64
