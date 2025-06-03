@@ -34,7 +34,7 @@ ENV/
 .DS_Store
 
 # Project specific
-forms/
+# forms/
 temp/
 *.log
 token_api.py
