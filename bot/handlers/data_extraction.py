@@ -179,35 +179,36 @@ def extract_text_from_openai_api(images):
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4-vision-preview",
+            model="gpt-4o",
             messages=[
                 {
                     "role": "user",
                     "content": [
                         {
                             "type": "text",
-                            "text": """Extract the following information from the document:
-1. Full name (ФИО)
-2. Passport series and number (Серия и номер паспорта)
-3. Passport issuing authority (Кем выдан)
-4. Passport issue date (Дата выдачи)
-5. Vehicle registration number (Номерные знаки)
+                            "text": """Extract the document information into a Python dictionary format. Based on the document type, extract only the relevant fields:
 
-Format the response as a JSON object with the following keys:
-- driver_name
-- passport_series
-- passport_number
-- passport_authority
-- passport_date_issued
-- number_plates
+        For passport documents, extract these fields:
+        {
+            'driver_name': 'full name from passport including surname, name and patronymic',
+            'passport_series': 'passport series number',
+            'passport_number': 'passport number',
+            'passport_authority': 'from authority field from passport, usually starts with MIA',
+            'passport_date_issued': 'date of issue in DD/MM/YYYY format'
+        }
 
-If any field is not found, leave it as an empty string."""
+        For vehicle license documents, extract only the vehicle licence plate / DAVLAT RAQAM BELGISI, found at line 1.:
+        {
+            'number_plates': 'vehicle license plate'
+        }
+
+        Only extract information that is clearly visible and readable. Return ONLY the dictionary, no additional text."""
                         },
                         *content_list
                     ]
                 }
             ],
-            max_tokens=500
+            # max_tokens=500
         )
         
         logger.info("Successfully received response from OpenAI API")
