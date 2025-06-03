@@ -25,12 +25,13 @@ def setup_logger(name: str) -> logging.Logger:
     )
     
     # Create and configure file handler
-    # Use a logs directory in the project root
-    log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logs')
-    os.makedirs(log_dir, exist_ok=True)
+    log_dir = '/var/log/supervisor'
+    if not os.path.exists(log_dir):
+        log_dir = 'logs'
+        os.makedirs(log_dir, exist_ok=True)
         
     file_handler = RotatingFileHandler(
-        filename=os.path.join(log_dir, 'bot.log'),
+        filename=os.path.join(log_dir, 'logistics-bot.log'),
         maxBytes=10*1024*1024,  # 10MB
         backupCount=5
     )
