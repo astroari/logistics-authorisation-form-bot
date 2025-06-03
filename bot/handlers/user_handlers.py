@@ -36,7 +36,7 @@ async def cmd_admin_info(msg: types.Message, config: BotConfig) -> None:
 @user_router.message(Command('new_form'))
 async def cmd_new_form(msg: types.Message, state: FSMContext) -> None:
     """Process the /new_form command."""
-    await msg.answer("Please send the required documents. Press /done when you are finished.")
+    await msg.answer("Отправьте документы водителя. После отправки нажмите /done.")
     await state.set_state(DocumentFlow.waiting_files)
 
 @user_router.message(DocumentFlow.waiting_files, F.content_type.in_(['document', 'photo']))
@@ -72,10 +72,10 @@ async def handle_files(msg: types.Message, state: FSMContext) -> None:
             print(f"DEBUG: Current files_data in state: {files_data}")
             
             # Acknowledge receipt
-            await msg.answer("✅ File received and processed. You can send more files or press /done when finished.")
+            await msg.answer("✅ Документы получены и обработаны. Вы можете отправить больше документов или нажать /done когда закончите.")
             
     except Exception as e:
-        await msg.answer(f"❌ Error processing file: {str(e)}")
+        await msg.answer(f"❌ Ошибка обработки документа: {str(e)}")
 
 @user_router.message(DocumentFlow.waiting_files, Command('done'))
 async def cmd_done(msg: types.Message, state: FSMContext) -> None:
@@ -84,17 +84,27 @@ async def cmd_done(msg: types.Message, state: FSMContext) -> None:
     files_data = data.get('files_data', {})
     
     if not files_data:
-        await msg.answer("No files were processed. Please send some files first.")
+        await msg.answer("Не было обработано ни одного документа. Пожалуйста, загрузите документы.")
         return
         
     # Format the extracted data
-    response = "📄 Extracted Data:\n\n"
-    for key, value in files_data.items():
-        response += f"{key}: {value}\n"
+    response = "📄 Извлеченные данные:\n"
+    fields = {
+        'driver_name': 'ФИО',
+        'passport_series': 'Серия паспорта',
+        'passport_number': 'Номер паспорта',
+        'passport_authority': 'Место выдачи',
+        'passport_date_issued': 'Дата выдачи',
+        'number_plates': 'Номерные знаки'
+    }
+    
+    for field_key, field_name in fields.items():
+        value = files_data.get(field_key, '')
+        response += f"- {field_name}: {value}\n"
     
     await msg.answer(response)
     await msg.answer(
-        "Choose issuing company:", 
+        "Выберите компанию, которая выдала документы:", 
         reply_markup=get_company_keyboard()
     )
     await state.set_state(DocumentFlow.waiting_company)
@@ -127,13 +137,13 @@ async def company_chosen(callback: types.CallbackQuery, callback_data: DocumentC
     # Check if we're in the right state
     current_state = await state.get_state()
     if current_state != DocumentFlow.waiting_company:
-        await callback.answer("Please start a new form first with /new_form")
+        await callback.answer("Пожалуйста, начните новую форму с /new_form")
         return
     
     company = callback_data.value
     
     await state.update_data(company=company)
-    await callback.message.edit_text(f"Selected: {company}\n\nNow enter factory name:")
+    await callback.message.edit_text(f"Выбрана компания: {company}\n\nТеперь введите название завода:")
     await state.set_state(DocumentFlow.waiting_factory)
     
     # Important: acknowledge the callback
@@ -145,7 +155,7 @@ async def factory_chosen(msg: types.Message, state: FSMContext):
     factory_name = msg.text
     
     if not factory_name:
-        await msg.answer("Factory name cannot be empty. Please try again.")
+        await msg.answer("Название завода не может быть пустым. Пожалуйста, попробуйте снова.")
         return
     
     await state.update_data(factory=factory_name)
@@ -173,10 +183,10 @@ async def factory_chosen(msg: types.Message, state: FSMContext):
                     caption=f"Filled form for {factory}"
                 )
         
-        await msg.answer("✅ Form has been processed and sent!")
+        await msg.answer("✅ Форма была обработана и отправлена!")
         
     except Exception as e:
-        await msg.answer(f"❌ Error processing forms: {str(e)}")
+        await msg.answer(f"❌ Ошибка обработки формы: {str(e)}")
     
     # Reset the state
     await state.clear()
