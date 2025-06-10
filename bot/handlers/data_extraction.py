@@ -168,6 +168,7 @@ def extract_text_from_openai_api(images):
     # encode every image
     print("\n[DEBUG] Encoding images for API")
     base64_images = [encode_image(image_path) for image_path in processed_images]
+    print(f'[DEBUG] number of images in base64_images: {len(base64_images)}')
 
     # dictionary with all the content
     content_list = []
@@ -178,7 +179,6 @@ def extract_text_from_openai_api(images):
         For passport documents, extract these fields:
         {
             'driver_name': 'full name from passport including surname, name and patronymic',
-            'passport_series': 'passport series number',
             'passport_number': 'passport number',
             'passport_authority': 'from authority field from passport, usually starts with MIA',
             'passport_date_issued': 'date of issue in DD/MM/YYYY format'
@@ -189,7 +189,7 @@ def extract_text_from_openai_api(images):
             'number_plates': 'vehicle license plate'
         }
 
-        Only extract information that is clearly visible and readable. Return ONLY the dictionary, no additional text."""
+        Only extract information that is clearly visible and readable. Return ONLY the python dictionaries, no additional text."""
     })
     
     for i in range(len(base64_images)):
@@ -199,7 +199,7 @@ def extract_text_from_openai_api(images):
                 "url": f"data:image/jpeg;base64,{base64_images[i]}"
             }
         })
-
+    print(f'[DEBUG] number of messages in content_list: {len(content_list)}')
     try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -213,9 +213,27 @@ def extract_text_from_openai_api(images):
         # Clean the response and convert to dictionary
         try:
             response_text = response.choices[0].message.content
+            print(f'[DEBUG] printing response_text_1: {response_text} ')
             # Remove markdown code block formatting if present
-            response_text = response_text.replace("```python", "").replace("```", "").strip()
-            return eval(response_text)
+            response_text = response_text.replace("```python", "").replace("```", "").replace("```json", "").strip()
+            response_text = eval(response_text)
+            print(f'[DEBUG] printing response_text_2: {response_text} ')
+            
+            # Convert single dictionary to list if needed
+            if isinstance(response_text, dict):
+                response_text = [response_text]
+            
+            # Combine both dictionaries
+            number_plates = [i['number_plates'] for i in response_text if 'number_plates' in i and i['number_plates']]
+            keys = ['driver_name', 'passport_series', 'passport_number', 'passport_authority', 'passport_date_issued', 'number_plates']
+            default_value = 'not extracted'
+            response_dict = dict.fromkeys(keys, default_value)
+            for i in response_text:
+                response_dict.update(i)
+            response_dict['number_plates'] = list(set(number_plates))
+
+            print(f'[DEBUG] printing response_text_3: {response_dict} ')
+            return response_dict
         except Exception as e:
             print(f"Error parsing dictionary response: {response.choices[0].message.content}")
             return {"error": "Failed to parse response as dictionary"}

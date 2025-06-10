@@ -56,7 +56,11 @@ def insert_data(organisation_name, extracted_data, temp_dir):
             value = extracted_data.get(key)
             if value is None:
                 print(f"Warning: Missing data for key '{key}'")
-            template_ws[cell] = value
+            elif isinstance(value, list):
+                # Join list items with comma and space if it's a list
+                template_ws[cell] = '/ '.join(str(item) for item in value)
+            else:
+                template_ws[cell] = value
 
         template.save(output_path)
         return output_path

@@ -1,6 +1,7 @@
 from aiogram.filters import Command
 from aiogram.filters.callback_data import CallbackData
 from aiogram import Router, types, F
+from datetime import date, timedelta
 
 from bot.config import BotConfig
 from bot.handlers.data_extraction import process_file
@@ -82,20 +83,23 @@ async def cmd_done(msg: types.Message, state: FSMContext) -> None:
     """Process the /done command."""
     data = await state.get_data()
     files_data = data.get('files_data', {})
+    files_data.update({'load_date': date.today().strftime('%d/%m/%Y')})
     
     if not files_data:
         await msg.answer("Не было обработано ни одного документа. Пожалуйста, загрузите документы.")
         return
         
     # Format the extracted data
-    response = "📄 Извлеченные данные:\n"
+    response = "📄 Данные:\n"
     fields = {
+        'load_date': 'Дата погрузки',
+        'number_plates': 'Тягач',
         'driver_name': 'ФИО',
-        'passport_series': 'Серия паспорта',
+        # 'passport_series': 'Серия паспорта',
         'passport_number': 'Номер паспорта',
-        'passport_authority': 'Место выдачи',
-        'passport_date_issued': 'Дата выдачи',
-        'number_plates': 'Номерные знаки'
+        'passport_authority': 'Кем выдан',
+        'passport_date_issued': 'Дата выдачи паспорта',
+        
     }
     
     for field_key, field_name in fields.items():
