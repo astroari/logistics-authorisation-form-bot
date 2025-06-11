@@ -174,7 +174,7 @@ def extract_text_from_openai_api(images):
     content_list = []
     content_list.append({
         "type": "text",
-        "text": """Extract the document information into a Python dictionary format. Based on the document type, extract only the relevant fields:
+        "text": """Extract the document information into a Python dictionary format (check all the documents). Based on the document type, extract only the relevant fields:
 
         For passport documents, extract these fields:
         {
