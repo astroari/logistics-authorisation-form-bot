@@ -57,7 +57,7 @@ def insert_data(organisation_name, extracted_data, temp_dir):
             if value is None:
                 print(f"Warning: Missing data for key '{key}'")
             elif isinstance(value, list):
-                # Join list items with comma and space if it's a list
+                # Join list items with comma and space if it's a list - TODO: i think i can just remove this step and do it in data extraction instead
                 template_ws[cell] = '/ '.join(str(item) for item in value)
             else:
                 template_ws[cell] = value

@@ -189,7 +189,7 @@ def extract_text_from_openai_api(images):
             'number_plates': 'vehicle license plate'
         }
 
-        Only extract information that is clearly visible and readable. Return ONLY the python dictionaries, no additional text."""
+        Only extract information that is clearly visible and readable. Return ONLY the python dictionaries as a list, no additional text."""
     })
     
     for i in range(len(base64_images)):
@@ -230,7 +230,7 @@ def extract_text_from_openai_api(images):
             response_dict = dict.fromkeys(keys, default_value)
             for i in response_text:
                 response_dict.update(i)
-            response_dict['number_plates'] = list(set(number_plates))
+            response_dict['number_plates'] = '/'.join(list(set(number_plates)))
 
             print(f'[DEBUG] printing response_text_3: {response_dict} ')
             return response_dict
