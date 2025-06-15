@@ -184,7 +184,10 @@ def extract_text_from_openai_api(images):
             'passport_date_issued': 'date of issue in DD/MM/YYYY format'
         }
 
-        For vehicle license documents, extract only the vehicle licence plate / DAVLAT RAQAM BELGISI, found at line 1.:
+        For vehicle license documents, extract only the vehicle licence plate / DAVLAT RAQAM BELGISI, found at line 1. and extract info only from the front side of the licence (the one that has the Uzbekistan flag and emblem). Uzbek license plates follow the format: ## ### AAA  (numbers-numbers-letters) or  ## #### AA (numbers-numbers-letters). Be very careful to distinguish between similar characters:
+        * Number 1 vs Letter T or I
+        * Number 8 vs Letter B  
+        * Number 0 vs Letter O:
         {
             'number_plates': 'vehicle license plate'
         }
@@ -202,7 +205,7 @@ def extract_text_from_openai_api(images):
     print(f'[DEBUG] number of messages in content_list: {len(content_list)}')
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="o4-mini",
             messages=[
                 {
                     "role": "user",
