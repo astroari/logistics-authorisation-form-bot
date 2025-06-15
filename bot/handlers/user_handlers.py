@@ -10,6 +10,8 @@ from bot.handlers.data_insertion import insert_data
 from aiogram.fsm.state import State, StatesGroup
 
 class DocumentFlow(StatesGroup):
+    waiting_outbound = State()
+    waiting_inbound = State()
     waiting_files = State()
     waiting_company = State()
     waiting_factory = State()
@@ -37,8 +39,40 @@ async def cmd_admin_info(msg: types.Message, config: BotConfig) -> None:
 @user_router.message(Command('new_form'))
 async def cmd_new_form(msg: types.Message, state: FSMContext) -> None:
     """Process the /new_form command."""
+    
+    await msg.answer("место погрузки")
+    await state.set_state(DocumentFlow.waiting_outbound)
+
+
+@user_router.message(DocumentFlow.waiting_outbound, F.text)
+async def get_outbound(msg: types.Message, state: FSMContext):
+    """Handle outbound location input."""
+    outbound = msg.text
+    
+    if not outbound:
+        await msg.answer("Название outbound не может быть пустым. Пожалуйста, попробуйте снова.")
+        return
+    
+    await state.update_data(outbound=outbound)
+    await msg.answer("место выгрузки")
+    await state.set_state(DocumentFlow.waiting_inbound)
+    
+
+# ask for files 
+@user_router.message(DocumentFlow.waiting_inbound, F.text)
+async def get_inbound(msg: types.Message, state: FSMContext):
+    """Handle inbound location input."""
+    inbound = msg.text
+    
+    if not inbound:
+        await msg.answer("Название outbound не может быть пустым. Пожалуйста, попробуйте снова.")
+        return
+    
+    await state.update_data(inbound=inbound)
     await msg.answer("Отправьте документы водителя. После отправки нажмите /done.")
     await state.set_state(DocumentFlow.waiting_files)
+
+
 
 @user_router.message(DocumentFlow.waiting_files, F.content_type.in_(['document', 'photo']))
 async def handle_files(msg: types.Message, state: FSMContext) -> None:
@@ -90,7 +124,10 @@ async def cmd_done(msg: types.Message, state: FSMContext) -> None:
         return
         
     # Format the extracted data
-    response = "📄 Данные:\n"
+    outbound = data.get('outbound')
+    inbound = data.get('inbound')
+    response = f"{outbound.upper()} - {inbound.upper()}\n"
+    #response = "📄 Данные:\n"
     fields = {
         'load_date': 'Дата погрузки',
         'number_plates': 'Тягач',
