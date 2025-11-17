@@ -36,10 +36,16 @@ async def cmd_admin_info(msg: types.Message, config: BotConfig) -> None:
     else:
         await msg.answer("You are not an admin.")
 
+@user_router.message(Command('end'))
+async def cmd_end(msg: types.Message, state: FSMContext) -> None:
+    """Process the /end command."""
+    await state.clear()
+    await msg.answer("Форма отменена. Нажмите /new_form чтобы начать новую форму.")
+
 @user_router.message(Command('new_form'))
 async def cmd_new_form(msg: types.Message, state: FSMContext) -> None:
     """Process the /new_form command."""
-    
+    await state.clear()
     await msg.answer("место погрузки")
     await state.set_state(DocumentFlow.waiting_outbound)
 

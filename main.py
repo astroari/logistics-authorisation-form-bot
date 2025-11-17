@@ -19,7 +19,8 @@ async def setup_bot_commands():
     bot_commands = [
         BotCommand(command="/start", description="Стартовать бота"),
         BotCommand(command="/new_form", description="Создать новую доверенность"),
-        BotCommand(command="/done", description="Закончить загрузку документов")
+        BotCommand(command="/done", description="Закончить загрузку документов"),
+        BotCommand(command="/end", description="Отменить форму")
     ]
     await bot.set_my_commands(bot_commands)   
 
@@ -39,6 +40,7 @@ async def main(bot: Bot) -> None:
 4. Выберите фирму выдающую доверенность.
 5. Введите наименование завода для доверенности.
 6. Бот создаст доверенность в XLSX формате. Проверьте данные и сохраните этот файл в формате PDF. 
+7. Нажмите команду /end чтобы отменить форму.
 """
     )
 
