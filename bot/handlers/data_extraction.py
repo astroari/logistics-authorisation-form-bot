@@ -205,7 +205,7 @@ def extract_text_from_openai_api(images):
     print(f'[DEBUG] number of messages in content_list: {len(content_list)}')
     try:
         response = client.chat.completions.create(
-            model="o4-mini",
+            model="gpt-5-mini",
             messages=[
                 {
                     "role": "user",
